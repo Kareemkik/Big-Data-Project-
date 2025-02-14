@@ -1,0 +1,159 @@
+
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: sparkdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+
+  namenode-master:
+    container_name: namenode-master
+    build: .
+    image: hadoop_base:1
+    user: root
+    environment:
+      - HADOOP_HOME=/opt/hadoop
+      - HADOOP_STREAMING_JAR=/opt/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.1.jar
+    entrypoint: ['./entrypoint.sh','namenode']
+    volumes:
+      - ./hdfs-conf/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml
+
+    ports:
+      - '9870:9870'
+
+  datanode1:
+    container_name: datanode1
+    build: .
+    image: hadoop_base:1
+    user: root
+    environment:
+      - HADOOP_HOME=/opt/hadoop
+      - HADOOP_STREAMING_JAR=/opt/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.1.jar
+    entrypoint: ['./entrypoint.sh','datanode']
+    volumes:
+      - ./hdfs-conf/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml
+  datanode2:
+    container_name: datanode2
+    build: .
+    image: hadoop_base:1
+    user: root
+    environment:
+      - HADOOP_HOME=/opt/hadoop
+      - HADOOP_STREAMING_JAR=/opt/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.1.jar
+    entrypoint: ['./entrypoint.sh','datanode']
+    volumes:
+      - ./hdfs-conf/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml
+  datanode3:
+    container_name: datanode3
+    build: .
+    image: hadoop_base:1
+    user: root
+    environment:
+      - HADOOP_HOME=/opt/hadoop
+      - HADOOP_STREAMING_JAR=/opt/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.1.jar
+    entrypoint: ['./entrypoint.sh','datanode']
+    volumes:
+      - ./hdfs-conf/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml
+
+  spark-master:
+    container_name: da-spark-master
+    #build: .
+    image: badral101/spark-cluster:0.1.0
+    entrypoint: ['./entrypoint.sh', 'master']
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    volumes:
+      - ./book_data:/opt/spark/data
+      - ./spark_apps:/opt/spark/apps
+      - spark-logs:/opt/spark/spark-events
+      - ./spark-conf:/opt/spark/conf
+    env_file:
+      - env.spark
+    ports:
+      # port for frontend (spark driver engine)
+      - '9090:8080'
+      # port for backend
+      - '7077:7077'
+  spark-history-server:
+    container_name: da-spark-history
+    image: badral101/spark-cluster:0.1.0
+    entrypoint: ['./entrypoint.sh', 'history']
+    depends_on:
+      - spark-master
+    env_file:
+      - env.spark
+    volumes:
+      - ./spark-conf:/opt/spark/conf
+      - spark-logs:/opt/spark/spark-events
+    ports:
+      - '18080:18080'
+  spark-worker:
+    image: badral101/spark-cluster:0.1.0
+    entrypoint: ['./entrypoint.sh', 'worker']
+    depends_on:
+      - spark-master
+    env_file:
+      - env.spark
+    deploy:
+      resources:
+        limits:
+          memory: 2400M
+    volumes:
+      - ./book_data:/opt/spark/data
+      - ./spark_apps:/opt/spark/apps
+      - ./spark-conf:/opt/spark/conf
+      - spark-logs:/opt/spark/spark-events
+  spark-worker2:
+    image: badral101/spark-cluster:0.1.0
+    entrypoint: ['./entrypoint.sh', 'worker']
+    depends_on:
+      - spark-master
+    env_file:
+      - env.spark
+    deploy:
+      resources:
+        limits:
+          memory: 2400M
+    volumes:
+      - ./book_data:/opt/spark/data
+      - ./spark_apps:/opt/spark/apps
+      - ./spark-conf:/opt/spark/conf
+      - spark-logs:/opt/spark/spark-events
+  notebook:
+    image: badral101/spark-cluster:0.1.0
+    entrypoint: ["bash","-c","jupyter notebook --ip='*' --port=8888 --allow-root --no-browser"]
+    #entrypoint: ["./entrypoint.sh","notebook"]
+    env_file:
+      - env.spark
+    volumes:
+      - spark-logs:/opt/spark/spark-events
+      - ./spark-conf:/opt/spark/conf
+      - ./notebook:/opt/spark/notebook
+    ports:
+      # for jupyter notebook
+      - '8889:8888'
+      # for 
+      - '4040:4040'
+volumes:
+  spark-logs:
+  pgdata:  # This was missing
