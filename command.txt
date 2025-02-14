@@ -1,0 +1,28 @@
+
+mkdir NewChic
+cd NewChic
+docker compose up -d
+
+///////////////////////////// # uploading files to hdfs 
+docker cp shoes.csv namenode-master:/tmp/shoes.csv
+docker cp accessories.csv  namenode-master:/tmp/accessories.csv
+docker cp jewelry.csv  namenode-master:/tmp/jewelry.csv
+docker exec -it namenode-master hdfs dfs -put /tmp/shoes.csv hdfs://namenode-master:8020/shoes1.csv
+docker exec -it namenode-master hdfs dfs -put /tmp/accessories.csv  hdfs://namenode-master:8020/accessories1.csv
+docker exec -it namenode-master hdfs dfs -put /tmp/jewelry.csv  hdfs://namenode-master:8020/jewelry1.csv 
+///////
+docker exec -it namenode-master hdfs dfs -get hdfs://namenode-master:8020/output /tmp/output #to get files local 
+docker cp namenode-master:/tmp/output ./output #to get files local 
+/////////
+docker exec -it namenode-master hdfs dfs -get hdfs://namenode-master:8020/output_parquet /tmp/output_parquet #to get files local 
+docker cp namenode-master:/tmp/output_parquet ./output_parquet #to get files local 
+
+///////
+
+docker exec -it namenode-master hdfs dfs -ls hdfs://namenode-master:8020/output_parquet/
+docker exec -it postgres-db psql -U user -d sparkdb
+docker exec -it da-spark-master bash
+mkdir -p /opt/spark/jars
+cd /opt/spark/jars
+wget https://jdbc.postgresql.org/download/postgresql-42.2.23.jar
+exit
